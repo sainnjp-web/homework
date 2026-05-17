@@ -9,8 +9,10 @@
       .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 500px; margin: auto; }
       h2 { color: #333; font-size: 20px; margin-bottom: 15px; }
       #reader { width: 100%; max-width: 600px; margin: 0 auto; border-radius: 8px; overflow: hidden; background: #eee; }
-      #reader video { transform: scaleX(-1); } /* Mirror user video feed alignment matching physical placement */
+      #reader video { transform: scaleX(-1); } /* インカメラ用に映像を左右反転します */
       #result { margin-top: 20px; padding: 15px; border-radius: 5px; font-weight: bold; background: #e2f3f5; text-align: left; max-height: 150px; overflow-y: auto; font-size: 14px; }
+      .success-msg { color: #188038; }
+      .error-msg { color: #d93025; }
     </style>
   </head>
   <body>
@@ -20,12 +22,12 @@
       <div id="result">QRコードをかざしてください<br></div>
     </div>
     
-    <!-- Load structural distribution modules of html5-qrcode standard libraries -->
+    <!-- カメラを動かすためのプログラム（ライブラリ）を読み込みます -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     
     <script>
-      // [CRITICAL ADJUSTMENT VALUE]
-      // Replace this exact text sequence with your active live production webapp endpoint URL string string.
+      // 【最重要・調整パラメータ】
+      // 先ほどGASの「新しいデプロイ」で発行された、末尾が「/exec」のURLをここに貼り付けてください。
       const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwAbUSvNAJo_5d57l5GSUqZ0YFUQ0IuWffh7XX4seDRbzWsKSl5lKrNfyacwmKADISF0Q/exec";
 
       let CURRENT_CODE = '';
@@ -46,31 +48,39 @@
         oscillator.stop(context.currentTime + 0.15); 
       };
 
-      // Callback script logic fired immediately upon successful payload acquisition vectors
+      // QRコードの読み取りに成功した瞬間に動く処理
       const onScanSuccess = (decodedText) => {
         if (CURRENT_CODE !== decodedText) {
           CURRENT_CODE = decodedText;
           playSound();
           appendLog(`通信中... (${decodedText})`);
     
-          // Initialize native browser object data structural packaging protocols
-          let form = new FormData();
-          form.append('data1', decodedText); // Bind contents safely beneath the data transmission identifier key
+          // 【エラー対策】エラーが起きにくい「テキスト形式（URLSearchParams）」で荷物を作ります
+          const params = new URLSearchParams();
+          params.append('data1', decodedText); // 'data1' という名前の箱に児童名を入れます
 
-          // Dispatch asynchronous network operations bypassing CORS standard safety barriers
+          // GASの窓口（doPost）に向けて、最も安全な方法で荷物を送信します
           fetch(GAS_WEB_APP_URL, {
             method: "POST",
-            body: form,
-            mode: "cors" 
+            body: params,
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded' // テキスト通信であることを証明する設定
+            }
           })
-          .then(response => response.text()) // Transform incoming streaming array returns back to readable text arrays
+          .then(response => {
+            if (!response.ok) {
+              throw new Error('ネットワークの応答が正常ではありませんでした');
+            }
+            return response.text(); // GASからのメッセージを受け取ります
+          })
           .then(responseText => {
-            appendLog(`✔ ${responseText}`); 
-            // [Adjustable Parameter] Control scanning interval block delay timers (2500ms default)
+            appendLog(`<span class="success-msg">✔ ${responseText}</span>`); 
+            // 2.5秒後に次の児童のスキャンを許可します
             setTimeout(() => { CURRENT_CODE = ''; }, 2500); 
           })
           .catch(error => {
-            appendLog(`❌ 送信エラー: ${error}`);
+            // 万が一失敗した場合のエラー表示です
+            appendLog(`<span class="error-msg">❌ 送信に失敗しました（理由: ${error.message}）</span>`);
             setTimeout(() => { CURRENT_CODE = ''; }, 2500);
           });
         }
