@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_blank">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+      body { font-family: sans-serif; text-align: center; margin-top: 20px; background: #f0f2f5; }
+      .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 500px; margin: auto; }
+      h2 { color: #333; font-size: 20px; margin-bottom: 15px; }
+      #reader { width: 100%; max-width: 600px; margin: 0 auto; border-radius: 8px; overflow: hidden; background: #eee; }
+      #reader video { transform: scaleX(-1); } /* インカメラ用に鏡合わせにします */
+      #result { margin-top: 20px; padding: 15px; border-radius: 5px; font-weight: bold; background: #e2f3f5; text-align: left; max-height: 150px; overflow-y: auto; font-size: 14px; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h2>宿題提出チェックカメラ（外部特設サイト版）</h2>
+      <div id="reader"></div>
+      <div id="result">QRコードをかざしてください<br></div>
+    </div>
+    
+    <!-- ご提示いただいた一番最初の使い慣れたカメラライブラリを読み込みます -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    
+    <script>
+      // 【調整可能パラメータ】先ほどGASで発行した「ウェブアプリのURL」をここに貼り付けてください
+      const GAS_WEB_APP_URL = "ここにデプロイしたGASのURLを貼り付ける";
+
+      let CURRENT_CODE = '';
+      let html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
+      let QRresult = document.querySelector('#result');
+      
+      const appendLog = (text) => {
+        QRresult.innerHTML = `${text}<br>` + QRresult.innerHTML; 
+      };
+
+      const playSound = () => {
+        const context = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = context.createOscillator();
+        oscillator.type = 'square';
+        oscillator.frequency.setValueAtTime(1200, context.currentTime); 
+        oscillator.connect(context.destination);
+        oscillator.start();
+        oscillator.stop(context.currentTime + 0.15); 
+      };
+
+      // QRコードの読み取りに成功した瞬間の処理
+      const onScanSuccess = (decodedText) => {
+        if (CURRENT_CODE !== decodedText) {
+          CURRENT_CODE = decodedText;
+          playSound();
+          appendLog(`通信中... (${decodedText})`);
+    
+          // 記事に書いてあった「荷物（Form）を作ってGASにPOST送信する」という最新の仕組みです
+          let form = new FormData();
+          form.append('data1', decodedText); // 'data1'という名前で児童名を詰め込みます
+
+          fetch(GAS_WEB_APP_URL, {
+            method: "POST",
+            body: form,
+            mode: "cors" // 異なるサイト間での通信を許可する設定
+          })
+          .then(response => response.text()) // GASの return ContentService からのお返事テキストを受け取ります
+          .then(responseText => {
+            appendLog(`✔ ${responseText}`); // 「〇〇さんの宿題を記録しました！」と画面に出ます
+            setTimeout(() => { CURRENT_CODE = ''; }, 2500); // 2.5秒後に次の児童のスキャンを許可
+          })
+          .catch(error => {
+            appendLog(`❌ 送信エラー: ${error}`);
+            setTimeout(() => { CURRENT_CODE = ''; }, 2500);
+          });
+        }
+      };
+
+      window.onload = () => {
+        html5QrcodeScanner.render(onScanSuccess);
+      };
+    </script>
+  </body>
+</html>
