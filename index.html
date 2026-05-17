@@ -9,23 +9,24 @@
       .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 500px; margin: auto; }
       h2 { color: #333; font-size: 20px; margin-bottom: 15px; }
       #reader { width: 100%; max-width: 600px; margin: 0 auto; border-radius: 8px; overflow: hidden; background: #eee; }
-      #reader video { transform: scaleX(-1); } /* インカメラ用に鏡合わせにします */
+      #reader video { transform: scaleX(-1); } /* Mirror user video feed alignment matching physical placement */
       #result { margin-top: 20px; padding: 15px; border-radius: 5px; font-weight: bold; background: #e2f3f5; text-align: left; max-height: 150px; overflow-y: auto; font-size: 14px; }
     </style>
   </head>
   <body>
     <div class="card">
-      <h2>宿題提出チェックカメラ（外部特設サイト版）</h2>
+      <h2>宿題提出チェックカメラ（外部サーバー版）</h2>
       <div id="reader"></div>
       <div id="result">QRコードをかざしてください<br></div>
     </div>
     
-    <!-- ご提示いただいた一番最初の使い慣れたカメラライブラリを読み込みます -->
+    <!-- Load structural distribution modules of html5-qrcode standard libraries -->
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     
     <script>
-      // 【調整可能パラメータ】先ほどGASで発行した「ウェブアプリのURL」をここに貼り付けてください
-      const GAS_WEB_APP_URL = "ここにデプロイしたGASのURLを貼り付ける";
+      // [CRITICAL ADJUSTMENT VALUE]
+      // Replace this exact text sequence with your active live production webapp endpoint URL string string.
+      const GAS_WEB_APP_URL = "YOUR_DEPLOYED_GAS_WEB_APP_URL_HERE";
 
       let CURRENT_CODE = '';
       let html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
@@ -45,26 +46,28 @@
         oscillator.stop(context.currentTime + 0.15); 
       };
 
-      // QRコードの読み取りに成功した瞬間の処理
+      // Callback script logic fired immediately upon successful payload acquisition vectors
       const onScanSuccess = (decodedText) => {
         if (CURRENT_CODE !== decodedText) {
           CURRENT_CODE = decodedText;
           playSound();
           appendLog(`通信中... (${decodedText})`);
     
-          // 記事に書いてあった「荷物（Form）を作ってGASにPOST送信する」という最新の仕組みです
+          // Initialize native browser object data structural packaging protocols
           let form = new FormData();
-          form.append('data1', decodedText); // 'data1'という名前で児童名を詰め込みます
+          form.append('data1', decodedText); // Bind contents safely beneath the data transmission identifier key
 
+          // Dispatch asynchronous network operations bypassing CORS standard safety barriers
           fetch(GAS_WEB_APP_URL, {
             method: "POST",
             body: form,
-            mode: "cors" // 異なるサイト間での通信を許可する設定
+            mode: "cors" 
           })
-          .then(response => response.text()) // GASの return ContentService からのお返事テキストを受け取ります
+          .then(response => response.text()) // Transform incoming streaming array returns back to readable text arrays
           .then(responseText => {
-            appendLog(`✔ ${responseText}`); // 「〇〇さんの宿題を記録しました！」と画面に出ます
-            setTimeout(() => { CURRENT_CODE = ''; }, 2500); // 2.5秒後に次の児童のスキャンを許可
+            appendLog(`✔ ${responseText}`); 
+            // [Adjustable Parameter] Control scanning interval block delay timers (2500ms default)
+            setTimeout(() => { CURRENT_CODE = ''; }, 2500); 
           })
           .catch(error => {
             appendLog(`❌ 送信エラー: ${error}`);
